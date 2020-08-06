@@ -12,12 +12,16 @@ const compileUtil = {
             return this.getValue(args[1].trim(), vm)
         })
     },
+    setVal(expre, vm, inputVal) {
+        return expre.split('.').reduce((data, currentVal) => {
+            data[currentVal] = inputVal
+        }, vm.$data)
+    },
     text(node, expre, vm) {
         let value = null
         if (expre.indexOf('{{') !== -1) {
             value = expre.replace(/\{\{(.*?)\}\}/g, (...args) => {
                 new Watcher(vm, args[1].trim(), () => {
-                    console.log(this.getContent(expre, vm))
                     this.updater.textUpdater(node, this.getContent(expre, vm))
                 })
                 return this.getValue(args[1].trim(), vm)
@@ -36,20 +40,35 @@ const compileUtil = {
     },
     model(node, expre, vm) {
         const value = this.getValue(expre, vm)
+        //data => view
         new Watcher(vm, expre, (newVal) => {
             this.updater.modelUpdater(node, newVal)
         })
+        //view => data => view
+        node.addEventListener('input', (e) => {
+            this.setVal(expre, vm, e.target.value)
+        })
         this.updater.modelUpdater(node, value)
     },
-    getEvent(expre, vm) {
-        return vm.$options.methods[expre]
+    getEvent(name, vm) {
+        return vm.$options.methods[name]
     },
     //value: handlerClick dirEvent: click:
     on(node, value, vm, dirEvent) {
-        node.addEventListener(dirEvent, this.getEvent(value, vm).bind(vm), false)
+        new Watcher(vm, 'on', (newVal) => {
+            this.updater.onUpdater(node, dirEvent, this.getEvent(newVal, vm).bind(vm))
+        })
+        this.updater.onUpdater(node, dirEvent, this.getEvent(value, vm).bind(vm))
     },
-    bind() {
-
+    //value: tips dirEvent: placeholder
+    getAttrValue(name, vm) {
+        return vm.$data[name]
+    },
+    bind(node, value, vm, dirEvent) {
+        new Watcher(vm, value, () => {
+            this.updater.bindUpdater(node, dirEvent, this.getAttrValue(value, vm))
+        })
+        this.updater.bindUpdater(node, dirEvent, this.getAttrValue(value, vm))
     },
     updater: {
         textUpdater(node, value) {
@@ -61,8 +80,11 @@ const compileUtil = {
         modelUpdater(node, value) {
             node.value = value
         },
-        onUpdater() {
-
+        onUpdater(node, dirEvent, listener, useCapture = false) {
+            node.addEventListener(dirEvent, listener, useCapture)
+        },
+        bindUpdater(node, name, value) {
+            node.setAttribute(name, value)
         }
     }
 }
@@ -97,9 +119,16 @@ class Compile {
                 const [dirName, dirEvent] = directive.split(':')
                 compileUtil[dirName](node, value, this.vm, dirEvent)
                 node.removeAttribute('v-' + directive)
-            } else if (this.isEventName(name)) {
+            }
+            if (this.isEventName(name)) {
                 //name: @click
                 compileUtil['on'](node, value, this.vm, name.slice(1))
+                node.removeAttribute(name)
+            }
+            if (this.isAttrName(name)) {
+                //name: :src
+                // console.log(name)
+                compileUtil['bind'](node, value, this.vm, name.slice(1))
                 node.removeAttribute(name)
             }
         })
@@ -109,6 +138,9 @@ class Compile {
         if (/\{\{(.*?)\}\}/.test(content)) {
             compileUtil['text'](node, content, this.vm)
         }
+    }
+    isAttrName(name) {
+        return name.startsWith(':')
     }
     isEventName(name) {
         //@click
@@ -138,6 +170,19 @@ class MyVue {
         if (this.$el) {
             new Observer(this.$data)
             new Compile(this.$el, this)
+            this.proxyData(this.$data)
+        }
+    }
+    proxyData(data) {
+        for (const key in data) {
+            Object.defineProperty(this, key, {
+                get() {
+                    return data[key]
+                },
+                set(newVal) {
+                    data[key] = newVal
+                }
+            })
         }
     }
 }
