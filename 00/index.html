@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyVue</title>
+</head>
+
+<body>
+    <div id="app">
+        <h1>{{ person.name }} -- {{ person.age }}</h1>
+        <h2>{{ msg }}</h2>
+        <h3>{{}}</h3>
+        <ul>
+            <li>1</li>
+            <li>2</li>
+            <li>3</li>
+        </ul>
+        <div v-text="msg"></div>
+        <div v-text="person.name"></div>
+        <input type="text" v-model="msg">
+    </div>
+    <script src="./Observer.js"></script>
+    <script src="./MyVue.js"></script>
+    <script>
+        let app = new MyVue({
+            el: "#app",
+            data: {
+                person: {
+                    name: 'Little',
+                    age: 18,
+                    say: {
+                        a: 'Like it'
+                    }
+                },
+                msg: 'Control'
+            }
+        })
+    </script>
+</body>
+
+</html>
