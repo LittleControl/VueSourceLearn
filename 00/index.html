@@ -11,7 +11,6 @@
     <div id="app">
         <h1>{{ person.name }} -- {{ person.age }}</h1>
         <h2>{{ msg }}</h2>
-        <h3>{{}}</h3>
         <ul>
             <li>1</li>
             <li>2</li>
@@ -20,6 +19,9 @@
         <div v-text="msg"></div>
         <div v-text="person.name"></div>
         <input type="text" v-model="msg">
+        <button v-on:click="handlerClick">v-on:clickTemp</button>
+        <button @click="handlerClick">@Temp</button>
+        <div v-html="htmlStr"></div>
     </div>
     <script src="./Observer.js"></script>
     <script src="./MyVue.js"></script>
@@ -34,7 +36,14 @@
                         a: 'Like it'
                     }
                 },
+                htmlStr: '<h1>12345</h1>',
                 msg: 'Control'
+            },
+            methods: {
+                handlerClick(newValue) {
+                    console.log(newValue)
+                    this.$data.person.name = 998
+                }
             }
         })
     </script>

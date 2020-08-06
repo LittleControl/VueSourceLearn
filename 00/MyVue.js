@@ -7,10 +7,19 @@ const compileUtil = {
             return data[currentVal]
         }, vm.$data)
     },
+    getContent(expre, vm) {
+        return expre.replace(/\{\{(.*?)\}\}/g, (...args) => {
+            return this.getValue(args[1].trim(), vm)
+        })
+    },
     text(node, expre, vm) {
         let value = null
         if (expre.indexOf('{{') !== -1) {
             value = expre.replace(/\{\{(.*?)\}\}/g, (...args) => {
+                new Watcher(vm, args[1].trim(), () => {
+                    console.log(this.getContent(expre, vm))
+                    this.updater.textUpdater(node, this.getContent(expre, vm))
+                })
                 return this.getValue(args[1].trim(), vm)
             })
         } else {
@@ -20,21 +29,40 @@ const compileUtil = {
     },
     html(node, expre, vm) {
         const value = this.getValue(expre, vm)
+        new Watcher(vm, expre, (newVal) => {
+            this.updater.htmlUpdater(node, newVal)
+        })
         this.updater.htmlUpdater(node, value)
     },
     model(node, expre, vm) {
         const value = this.getValue(expre, vm)
+        new Watcher(vm, expre, (newVal) => {
+            this.updater.modelUpdater(node, newVal)
+        })
         this.updater.modelUpdater(node, value)
+    },
+    getEvent(expre, vm) {
+        return vm.$options.methods[expre]
+    },
+    //value: handlerClick dirEvent: click:
+    on(node, value, vm, dirEvent) {
+        node.addEventListener(dirEvent, this.getEvent(value, vm).bind(vm), false)
+    },
+    bind() {
+
     },
     updater: {
         textUpdater(node, value) {
             node.textContent = value
         },
         htmlUpdater(node, value) {
-            node.innerHtml = value
+            node.innerHTML = value
         },
         modelUpdater(node, value) {
             node.value = value
+        },
+        onUpdater() {
+
         }
     }
 }
@@ -69,6 +97,10 @@ class Compile {
                 const [dirName, dirEvent] = directive.split(':')
                 compileUtil[dirName](node, value, this.vm, dirEvent)
                 node.removeAttribute('v-' + directive)
+            } else if (this.isEventName(name)) {
+                //name: @click
+                compileUtil['on'](node, value, this.vm, name.slice(1))
+                node.removeAttribute(name)
             }
         })
     }
@@ -77,6 +109,10 @@ class Compile {
         if (/\{\{(.*?)\}\}/.test(content)) {
             compileUtil['text'](node, content, this.vm)
         }
+    }
+    isEventName(name) {
+        //@click
+        return name.startsWith('@')
     }
     isDirective(name) {
         return name.startsWith('v-')
